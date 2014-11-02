@@ -8,9 +8,9 @@ struct g_edge
 
 struct g_vertex
 {
-	struct g_edge * e; //adjacency list
-	struct g_edge * u; //update list; feedback arcs
-	struct g_vertex * next;
+	struct g_edge e; //adjacency list dummy node
+	struct g_edge u; //update list; feedback arcs dummy node
+	struct g_vertex * next; 
         int incidence;
         int visited;  
 	void * data; 

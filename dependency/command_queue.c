@@ -5,86 +5,79 @@
 #include "queue.h"
 #include "dep.h"
 
-int run_queue_len = 0;
-int max_job_num = 0;
+struct job
+{
+    struct node * d;
+    unsigned char out_of_date;
+};
 
-struct queue ready = {NULL, NULL};
-struct queue run = {NULL, NULL};
+struct job_queue 
+{
+    struct job_queue * n;
+    short t;
+    short h;
+    short max;
+    struct job q[];
+};
+
+int nprocs = 0;
+
+struct job_queue ready = {&ready, 0, 0};
+struct job_queue * tail = &ready;
+
+struct job_queue *
+init_job_queue(void) {
+    struct job_queue * q = malloc(4096);
+    memset(q, 0, 4096);
+    q->max = (4096 - sizeof(struct job_queue))/sizeof(struct job);
+    return q; 
+}
+
+void
+init_ready_queue(void) {
+    struct job_queue * n = init_job_queue();
+    n->n = tail->n;
+    tail->n = n;
+    tail = n;
+}
 
 int
-insert_in_queue(struct queue * q, void * d)
-{
-    struct list * new_item;
-
-    new_item = malloc(sizeof(*new_item));
-    memset(new_item, 0, sizeof(*new_item));
-    new_item->data = d;
-    if (q->head)
-    {
-        q->tail->next = new_item;
+enq(void * d) {
+    tail->q[tail->t].d = d; 
+    tail->q[tail->t].out_of_date = 1;
+    tail->t++;
+    if (tail->t >= tail->max) {
+        struct job_queue *n = init_job_queue();
+        n->n = tail->n;
+        tail->n = n;
+        tail = n; 
+        return 0; 
     }
-    else
-    {
-        q->head = new_item;
-    }
-    q->tail = new_item;
     return 0;
 }
     
-int
-queue_not_empty(struct queue * q)
+void *
+deq(void)
 {
-    return q->head != NULL;
+    struct job_queue * head = ready.n;
+    void * ret = &(head->q[head->h]);
+    head->h++;
+    if (head->h >= head->max) {
+        ready.n = head->n;
+        free(head);
+    }
+    return ret;
 }
 
-void *
-next_in_queue(struct queue * queue)
-{
-    return queue->head->data;
-}
-
-void *
-deq(struct queue * q)
-{
-    void * i;
-    struct list * old;
-
-    if (!q->head) return NULL;
-    old = q->head;
-    i = q->head->data;
-    q->head = q->head->next;
-    free(old);
-    if (!q->head) q->tail = NULL;
-    return i; 
+struct job * 
+next_job() {
+    
 }
 
 int
 execute_command_queue()
 {
-    while(queue_not_empty(&ready))
-    {
-        void * j;
-        if (run_queue_len < max_job_num)
-        {
-            int status;
-            j = next_in_queue(&ready);
-            status = start_job(&run, j);
-            if (job_started(status))
-            {
-                deq(&ready);
-            }
-            run_queue_len++;
-        }
-        else 
-        {
-            int s; 
-            int pid;
-
-            pid = wait(&s);
-            clean_up_job(j, pid);
-            run_queue_len--;
-        }
-    }
+    
 }
 
 struct run_item
@@ -182,4 +175,3 @@ update_dependents(void * d)
     }
     destroy_iterator(i);
 }
-

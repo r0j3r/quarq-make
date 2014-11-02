@@ -13,6 +13,4 @@ Features
      - can detect changes in command line options and update targets 
          appropriately
      - not dependent on the shell
-     - uses aldvanced algorithms to detect circular dependencies and execute 
-         update operations in parallel
-     - has full lexical scoping and namespacing derived from dylan
+ 
