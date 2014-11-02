@@ -77,19 +77,83 @@ eval_deps(void) {
                 int j; 
                 for(j = 0; (j < a) & (adj[j] != t); j++);
                 if (j == a) {
-                    printf("%p %s \n-> %p %s\n", r, r->commands, t, t->commands);
+                    printf("adj %p, %p %s \n-> %p %s\n", adj, r, r->commands, t, t->commands);
                     t->incidence++;
                     r->adjacency++; 
                     adj[a++] = t;
                 }
             }
-            adj[i] = 0;
             r->adj = adj;
         }
         r = r->next;
         printf("next %p\n", r);
     }
     return 0;       
+}
+
+int
+find_cycles(struct rule * r, int gen) {
+    int ret;
+
+    //detect cycles
+    if (r->visited == gen) {
+        return -1;
+    } else { 
+        r->visited = gen;
+    }
+
+    if (r->adj) {
+        printf("checking adj %p adjacency %d \n", r->adj, r->adjacency); 
+        for(int i = 0; i < r->adjacency; i++) {
+            ret = find_cycles(r->adj[i], gen);
+            if (-1 == ret) return -1;
+        }
+    }
+    
+    return 0;
+}
+
+int
+check_rules() {
+    struct rule * r = rules.next;
+    int gen = 1; 
+
+    while(r != &rules) {
+        if (r->incidence == 0) {
+            printf("checking top level %p\n", r);
+            if (-1 == find_cycles(r, gen++)) return -1;
+        }
+        r = r->next;
+    } 
+    return 0;
+}
+
+int
+update(struct rule * r) {
+    int ret;
+
+    if (r->adj) {
+        for(int i = 0; i < r->adjacency; i++) {
+            ret = update(r->adj[i]);
+            if (-1 == ret) return -1;
+        }
+    }
+
+    if (r->commands) {
+        printf("command %s\n", r->commands);
+    }
+
+    printf("target: ");
+    for(int i = 0; r->targets[i] ;i++) {
+        printf("%s ", r->targets[i]);
+        st_file = get_statefile(r->targets[i]);
+        if (!st_file) {
+            
+        }     
+    }
+    printf("\n");
+
+    return 0;
 }
 
 void
@@ -100,10 +164,10 @@ update_deps(void) {
         printf("rules is empty!\n");
     }
 
-    while(r != &rules)
-    {
-        printf("commands %s\nincidence %d, adjacency %d\n", r->commands, r->incidence, 
-            r->adjacency);
+    while(r != &rules) {
+        if (0 == r->incidence) {
+            update(r);
+        }
         r = r->next;
     }
 }
@@ -130,7 +194,11 @@ test(void) {
     add_rule(new_rule);
 
     eval_deps();
-    update_deps();
+    if (0 == check_rules()) {
+        update_deps();
+    } else {
+        printf("we found cycles in the dependency graph\n");
+    }
 }
 
 int
