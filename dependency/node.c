@@ -146,26 +146,29 @@ out_of_date(char * r, struct timeval * ev)
     return 0;
 }
 
-struct timeval *
+int
 update(struct rule * r) {
-    struct timeval * ret, * max_ev;
+    int ret = 0, out_of_date_sources = 0;
     int targets_need_update = 0;
 
     if (r->adj) {
         for(int i = 0; i < r->adjacency; i++) {
             ret = update(r->adj[i]);
-            if (0 == ret) { 
-                return 0;
-            } else if (timeval_cmp(ret, max_ev) > 0) {
-                free(max_ev);
-                max_ev = ret;    
+            if (-1 == ret) { 
+                return -1;
+            } else if (1 == ret) {
+                out_of_date_sources++;
             }
         }
     }
     
+    if (out_of_date_sources) {
+        target_needs_update++;
+    }
+
     printf("target: ");
     for(int i = 0; r->targets[i] ;i++) {
-        if (out_of_date(r->targets[i]), max_ev) {
+        if (out_of_date(r->targets[i])) {
             targets_need_update++;
         }
         printf("%s ", r->targets[i]);
@@ -177,13 +180,7 @@ update(struct rule * r) {
             printf("command %s\n", r->commands);
         }
 
-        max_ev = malloc(sizeof(*max_ev));
-        gettimeofday(max_ev, 0);
-        for(int i = 0; r->targets[i] ;i++) {
-            update_state(r->targets[i], max_ev);
-            printf("%s ", r->targets[i]);
-        }
-        return max_ev;
+        return 1;
     }
     return 0;
 }
