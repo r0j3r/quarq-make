@@ -92,22 +92,25 @@ eval_deps(void) {
 }
 
 int
-find_cycles(struct rule * r, int gen) {
+find_cycles(struct rule * r) {
     int ret;
 
     //detect cycles
-    if (r->visited == gen) {
+    if (r->marked) {
         return -1;
-    } else { 
-        r->visited = gen;
-    }
+    } 
 
-    if (r->adj) {
-        printf("checking adj %p adjacency %d \n", r->adj, r->adjacency); 
-        for(int i = 0; i < r->adjacency; i++) {
-            ret = find_cycles(r->adj[i], gen);
-            if (-1 == ret) return -1;
+    if (0 == r->visited) {
+        r->marked = 1;
+        if (r->adj) {
+            printf("checking adj %p adjacency %d \n", r->adj, r->adjacency); 
+            for(int i = 0; i < r->adjacency; i++) {
+                ret = find_cycles(r->adj[i]);
+                if (-1 == ret) return -1;
+            }
         }
+        r->marked = 0;
+        r->visited = 1;
     }
     
     return 0;
@@ -116,12 +119,12 @@ find_cycles(struct rule * r, int gen) {
 int
 check_rules() {
     struct rule * r = rules.next;
-    int gen = 1; 
 
     while(r != &rules) {
-        if (r->incidence == 0) {
-            printf("checking top level %p\n", r);
-            if (-1 == find_cycles(r, gen++)) return -1;
+        if (r->visited == 0) {
+            if (-1 == find_cycles(r)) { 
+                return -1; 
+            }
         }
         r = r->next;
     } 
@@ -129,30 +132,59 @@ check_rules() {
 }
 
 int
+out_of_date(char * r, struct timeval * ev)
+{
+    st = get_state(r);
+    if (st.previous == 0) {
+        return 1;
+    } else if (st.previous != st.current) {
+        return 1;
+    } else if (timeval_cmp(ev, st.event) > 0)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+struct timeval *
 update(struct rule * r) {
-    int ret;
+    struct timeval * ret, * max_ev;
+    int targets_need_update = 0;
 
     if (r->adj) {
         for(int i = 0; i < r->adjacency; i++) {
             ret = update(r->adj[i]);
-            if (-1 == ret) return -1;
+            if (0 == ret) { 
+                return 0;
+            } else if (timeval_cmp(ret, max_ev) > 0) {
+                free(max_ev);
+                max_ev = ret;    
+            }
         }
     }
-
-    if (r->commands) {
-        printf("command %s\n", r->commands);
-    }
-
+    
     printf("target: ");
     for(int i = 0; r->targets[i] ;i++) {
+        if (out_of_date(r->targets[i]), max_ev) {
+            targets_need_update++;
+        }
         printf("%s ", r->targets[i]);
-        st_file = get_statefile(r->targets[i]);
-        if (!st_file) {
-            
-        }     
     }
     printf("\n");
 
+    if (targets_need_update) {
+        if (r->commands) {
+            printf("command %s\n", r->commands);
+        }
+
+        max_ev = malloc(sizeof(*max_ev));
+        gettimeofday(max_ev, 0);
+        for(int i = 0; r->targets[i] ;i++) {
+            update_state(r->targets[i], max_ev);
+            printf("%s ", r->targets[i]);
+        }
+        return max_ev;
+    }
     return 0;
 }
 

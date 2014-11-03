@@ -14,5 +14,6 @@ struct rule
     int incidence;
     int adjacency;
     char * commands;
-    int visited;
+    unsigned char visited;
+    unsigned char marked; 
 };
