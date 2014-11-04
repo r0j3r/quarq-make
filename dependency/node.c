@@ -131,57 +131,72 @@ check_rules() {
     return 0;
 }
 
+
+struct file_state {
+    struct timeval previous;
+    struct timeval event;
+    struct timeval current;
+};
+
+struct file_state *
+get_state(char * r) {
+    struct file_state * ret = malloc(sizeof(*ret));
+    memset(ret, 0, sizeof(*ret));
+    return ret;
+}
+
 int
-out_of_date(char * r, struct timeval * ev)
-{
-    st = get_state(r);
-    if (st.previous == 0) {
+out_of_date(char * r) {
+    struct file_state * st = get_state(r);
+    if (st && (st->previous.tv_sec == 0) && (st->previous.tv_usec == 0)) {
         return 1;
-    } else if (st.previous != st.current) {
+    } else if (st && (st->previous.tv_sec != st->current.tv_sec) 
+        && (st->previous.tv_usec != st->current.tv_usec)) {
         return 1;
-    } else if (timeval_cmp(ev, st.event) > 0)
-    {
-        return 1;
-    }
+    } 
     return 0;
 }
 
 int
-update(struct rule * r) {
-    int ret = 0, out_of_date_sources = 0;
-    int targets_need_update = 0;
-
-    if (r->adj) {
-        for(int i = 0; i < r->adjacency; i++) {
-            ret = update(r->adj[i]);
-            if (-1 == ret) { 
-                return -1;
-            } else if (1 == ret) {
-                out_of_date_sources++;
-            }
-        }
-    }
-    
-    if (out_of_date_sources) {
-        target_needs_update++;
-    }
+update(struct rule * r, int force_update ) {
+    int ret = 0, targets_need_update = 0;
 
     printf("target: ");
     for(int i = 0; r->targets[i] ;i++) {
-        if (out_of_date(r->targets[i])) {
-            targets_need_update++;
-        }
         printf("%s ", r->targets[i]);
     }
     printf("\n");
 
-    if (targets_need_update) {
+    //we dont want missing intermediates to trigger update if all prereqs are up to date
+    if (force_update && out_of_date(r->targets[0])) {
+            targets_need_update++;
+    }
+
+    if (r->adj) {
+        int do_update = 0;
+
+        //we need to update but prereq might not exist
+        if (force_update || targets_need_update) {
+            do_update = 1;
+        }
+
+        for(int i = 0; i < r->adjacency; i++) {
+            ret = update(r->adj[i], do_update);
+            if (-1 == ret) { 
+                return -1;
+            } else if (1 == ret) {
+                targets_need_update++;
+            }
+        }
+    }
+
+    if (force_update || targets_need_update) {
         if (r->commands) {
             printf("command %s\n", r->commands);
         }
-
         return 1;
     }
+
     return 0;
 }
 
@@ -195,7 +210,7 @@ update_deps(void) {
 
     while(r != &rules) {
         if (0 == r->incidence) {
-            update(r);
+            update(r, 0);
         }
         r = r->next;
     }
