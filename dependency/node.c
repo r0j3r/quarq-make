@@ -131,18 +131,37 @@ check_rules() {
     return 0;
 }
 
-
 struct file_state {
     struct timeval previous;
     struct timeval event;
     struct timeval current;
+    int command_len;
+    char * commands[];
 };
+
+struct job {
+    struct rule *;
+    struct job * next; 
+};
+
+struct job * job_queue;
 
 struct file_state *
 get_state(char * r) {
     struct file_state * ret = malloc(sizeof(*ret));
     memset(ret, 0, sizeof(*ret));
     return ret;
+}
+
+int
+target_missing(char * t) {
+    char * p = realpath(t, 0);
+    if (!p) {
+        int ret = 1;
+        free(p);
+        return 1; 
+    }
+    return 0;
 }
 
 int
@@ -158,41 +177,33 @@ out_of_date(char * r) {
 }
 
 int
-update(struct rule * r, int force_update ) {
+update(struct rule * r) {
     int ret = 0, targets_need_update = 0;
 
-    printf("target: ");
-    for(int i = 0; r->targets[i] ;i++) {
-        printf("%s ", r->targets[i]);
-    }
-    printf("\n");
-
-    //we dont want missing intermediates to trigger update if all prereqs are up to date
-    if (force_update && out_of_date(r->targets[0])) {
-            targets_need_update++;
-    }
-
     if (r->adj) {
-        int do_update = 0;
-
-        //we need to update but prereq might not exist
-        if (force_update || targets_need_update) {
-            do_update = 1;
-        }
-
         for(int i = 0; i < r->adjacency; i++) {
-            ret = update(r->adj[i], do_update);
+            ret = update(r->adj[i]);
             if (-1 == ret) { 
                 return -1;
             } else if (1 == ret) {
                 targets_need_update++;
             }
         }
+    } else {
+        printf("target: ");
+        for(int i = 0; r->targets[i] ;i++) {
+            printf("%s ", r->targets[i]);
+            if (out_of_date(r->targets[i])) {
+                targets_need_update++;
+            }
+        }
+        printf("\n");
     }
 
-    if (force_update || targets_need_update) {
+    if (targets_need_update) {
         if (r->commands) {
             printf("command %s\n", r->commands);
+            queue_job(r);
         }
         return 1;
     }
