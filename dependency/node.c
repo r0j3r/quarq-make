@@ -140,11 +140,34 @@ struct file_state {
 };
 
 struct job {
-    struct rule *;
+    struct rule * r;
     struct job * next; 
 };
 
 struct job * job_queue;
+
+void
+queue_job(struct rule * r) {
+    struct job * j = malloc(sizeof(*j));
+    j->r = r;
+    j->next = job_queue->next;
+    job_queue->next = j;
+    job_queue = j;
+    r->in_queue = 1;
+}
+
+void 
+rollback_queue(struct job * start) {
+    struct job * j = start->next, * s;
+    start->next = job_queue->next;
+    while(j != job_queue) {
+        s = j; 
+        j = j->next;
+        s->r->in_queue = 0;  
+        free(s);  
+    }
+    job_queue = start;
+}
 
 struct file_state *
 get_state(char * r) {
@@ -154,19 +177,7 @@ get_state(char * r) {
 }
 
 int
-target_missing(char * t) {
-    char * p = realpath(t, 0);
-    if (!p) {
-        int ret = 1;
-        free(p);
-        return 1; 
-    }
-    return 0;
-}
-
-int
-out_of_date(char * r) {
-    struct file_state * st = get_state(r);
+file_out_of_date(struct file_state * st, char * r) {
     if (st && (st->previous.tv_sec == 0) && (st->previous.tv_usec == 0)) {
         return 1;
     } else if (st && (st->previous.tv_sec != st->current.tv_sec) 
@@ -179,25 +190,40 @@ out_of_date(char * r) {
 int
 update(struct rule * r) {
     int ret = 0, targets_need_update = 0;
+    struct file_state * f_st = get_state(r->targets[0]);
 
     if (r->adj) {
         for(int i = 0; i < r->adjacency; i++) {
-            ret = update(r->adj[i]);
-            if (-1 == ret) { 
-                return -1;
-            } else if (1 == ret) {
+            if (r->adj[i]->adj) {
+                ret = update(r->adj[i]);
+                if (-1 == ret) { 
+                    return -1;
+                } else if (1 == ret) {
+                    targets_need_update++;
+                }
+            } else {
+                switch (file_out_of_date(f_st, r->sources[i])) {
+                case 0:
+                    break;
+                case 1:
+                    targets_need_update++;
+                    break;
+                case -1:
+                    return -1;
+                
+                }
+            }
+        }
+    }
+
+    if (r->commands) {
+        if (f_st->command_len != r->command_len) {
+            targets_need_update++;
+        } else {      
+            if (memcmp(f_st->commands, r->commands, f_st->command_len)) {
                 targets_need_update++;
             }
         }
-    } else {
-        printf("target: ");
-        for(int i = 0; r->targets[i] ;i++) {
-            printf("%s ", r->targets[i]);
-            if (out_of_date(r->targets[i])) {
-                targets_need_update++;
-            }
-        }
-        printf("\n");
     }
 
     if (targets_need_update) {
@@ -221,7 +247,10 @@ update_deps(void) {
 
     while(r != &rules) {
         if (0 == r->incidence) {
-            update(r, 0);
+            struct job * rollback = job_queue;
+            if (0 == update(r)) {
+                rollback_queue(rollback);
+            } 
         }
         r = r->next;
     }
