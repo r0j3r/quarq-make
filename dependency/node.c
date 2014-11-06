@@ -10,9 +10,29 @@ struct rule *
 create_rule(char ** sources, char ** targets, char * commands) {
     struct rule *n = malloc(sizeof(*n));
     memset(n, 0, sizeof(*n));
-    n->sources = sources;
+    n->sources = malloc(sizeof(sources));
+    memset(n->sources, 0, sizeof(sources));
+    for (int i = 0; sources[i]; i++)
+    {
+        char * p = realpath(sources[i], 0);
+        if (p) { 
+            n->sources[i] = p;
+        } else {
+            n->sources[i] = sources[i];
+        }
+    }
     printf("creating rule: %p target %p\n", n, targets);
-    n->targets = targets;
+    n->targets = malloc(sizeof(targets));
+    memset(n->targets, 0, sizeof(targets));
+    for (int i = 0; targets[i]; i++)
+    {
+        char * p = realpath(targets[i], 0);
+        if (p) { 
+            n->targets[i] = p;
+        } else {
+            n->targets[i] = targets[i];
+        }
+    }
     n->commands = commands;
     return n;    
 }
@@ -147,6 +167,13 @@ struct job {
 struct job * job_queue;
 
 void
+init_job_queue() {
+    job_queue = malloc(sizeof(*job_queue));
+    memset(job_queue, 0, sizeof(*job_queue));
+    job_queue->next = job_queue;
+}
+
+void
 enqueue_job(struct rule * r) {
     if (r->in_queue) return; 
     struct job * j = malloc(sizeof(*j));
@@ -168,6 +195,19 @@ rollback_queue(struct job * start) {
         free(s);  
     }
     job_queue = start;
+}
+
+void
+run_job_queue(void){
+    //start worker threads
+
+    struct job * d = job_queue->next, * r;
+    r = d->next;
+    while(r != d) {
+        r = r->next;
+    }
+
+    //wait for threads to exit
 }
 
 struct file_state *
@@ -246,6 +286,8 @@ update_deps(void) {
         printf("rules is empty!\n");
     }
 
+    init_job_queue();
+
     while(r != &rules) {
         if (0 == r->incidence) {
             struct job * rollback = job_queue;
@@ -255,6 +297,8 @@ update_deps(void) {
         }
         r = r->next;
     }
+
+    run_job_queue();
 }
 
 void
