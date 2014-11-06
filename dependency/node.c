@@ -147,7 +147,8 @@ struct job {
 struct job * job_queue;
 
 void
-queue_job(struct rule * r) {
+enqueue_job(struct rule * r) {
+    if (r->in_queue) return; 
     struct job * j = malloc(sizeof(*j));
     j->r = r;
     j->next = job_queue->next;
@@ -229,7 +230,7 @@ update(struct rule * r) {
     if (targets_need_update) {
         if (r->commands) {
             printf("command %s\n", r->commands);
-            queue_job(r);
+            enqueue_job(r);
         }
         return 1;
     }
