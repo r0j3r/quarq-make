@@ -1,7 +1,14 @@
+#define __USE_LARGEFILE64
+#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE
+
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "node.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 struct rule rules = {&rules, 0, 0, 0};
 struct rule * tail = &rules;
@@ -10,35 +17,50 @@ struct rule *
 create_rule(char ** sources, char ** targets, char * commands) {
     struct rule *n = malloc(sizeof(*n));
     memset(n, 0, sizeof(*n));
-    n->sources = malloc(sizeof(sources));
-    memset(n->sources, 0, sizeof(sources));
-    for (int i = 0; sources[i]; i++)
+    n->sources = sources;
+    for(int i = 0; sources[i]; i++)
     {
-        char * p = realpath(sources[i], 0);
-        if (p) { 
+        char * p = realpath(sources[i]);
+        if (p) {
             n->sources[i] = p;
         } else {
-            n->sources[i] = sources[i];
+            if (ENOENT == errno) {
+                char * b = strrchr(sources[i], '/');
+                if (b)  {  
+                    int l = b - sources[i];
+                    if (l && (l < 1023)) {
+                        char dirname[1024];
+                        memcpy(dirname, sources[i], l);
+                        dirname[l] = 0;
+                        p = realpath(dirname);
+                        if (p) {
+                            sprintf(n->sources[i], "%s%s", dirname, b); 
+                        } 
+                    } 
+                } 
+            }
         }
     }
     printf("creating rule: %p target %p\n", n, targets);
-    n->targets = malloc(sizeof(targets));
-    memset(n->targets, 0, sizeof(targets));
-    for (int i = 0; targets[i]; i++)
+    n->targets = targets;
+    for(int i = 0; targets[i]; i++)
     {
-        char * p = realpath(targets[i], 0);
-        if (p) { 
+        char * p = realpath(targets[i]);
+        if (p) {
             n->targets[i] = p;
-        } else {
-            n->targets[i] = targets[i];
         }
     }
     n->commands = commands;
     return n;    
 }
 
+struct rule * find_rule(char * n);
+
 void 
 add_rule(struct rule * n_r) {
+    int i;
+    for(i = 0; 0 == find_rule(n_r->targets[i]); i++);
+    if (n_r->targets[i]) return;
     n_r->next = tail->next;
     tail->next = n_r;
     tail = n_r;
@@ -152,9 +174,9 @@ check_rules() {
 }
 
 struct file_state {
-    struct timeval previous;
+    struct timespec previous;
     struct timeval event;
-    struct timeval current;
+    struct timespec current;
     int command_len;
     char * commands[];
 };
@@ -212,22 +234,52 @@ run_job_queue(void){
 
 struct file_state *
 get_state(char * r) {
-    struct file_state * ret = malloc(sizeof(*ret));
-    memset(ret, 0, sizeof(*ret));
+    struct file_state * ret = 0;
+    char * p = realpath(r, 0);
+    if (p) {
+        char * state_file_path  = malloc(strlen(p) + 7);
+        sprintf(state_file_path, "%s%s", "r", ".state");
+        int fd = open(state_file_path, O_RDONLY);
+        if (fd != -1) {
+            struct stat64 st_buff;
+            fstat64(fd, &st_buff);
+            ret = malloc(st_buff.st_size);
+            int err;
+            int bytes_read = 0;
+            while ((err = read(fd, ret + bytes_read, st_buff.st_size 
+                - bytes_read))) {
+                if (-1 != err) {
+                     bytes_read += err;
+                }
+            }
+            close(fd); 
+        } 
+    } else {
+        ret = malloc(sizeof(*ret));
+        memset(ret, 0, sizeof(*ret));
+    }
     return ret;
 }
 
 int
 file_out_of_date(struct file_state * st, char * r) {
-    if (st && (st->previous.tv_sec == 0) && (st->previous.tv_usec == 0)) {
+    char * p = realpath(r, 0);
+    if (p) {
+        struct stat64 st_buff; 
+        stat64(p, &st_buff);
+        st->current.tv_sec = st_buff.st_mtime;
+        st->current.tv_nsec = st_buff.st_mtim.tv_nsec;
+    }
+    if (st && (st->previous.tv_sec == 0) && (st->previous.tv_nsec == 0)) {
         return 1;
     } else if (st && (st->previous.tv_sec != st->current.tv_sec) 
-        && (st->previous.tv_usec != st->current.tv_usec)) {
+        && (st->previous.tv_nsec != st->current.tv_nsec)) {
         return 1;
     } 
     return 0;
 }
 
+//find out of date prereqs 
 int
 update(struct rule * r) {
     int ret = 0, targets_need_update = 0;
