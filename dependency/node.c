@@ -18,38 +18,8 @@ create_rule(char ** sources, char ** targets, char * commands) {
     struct rule *n = malloc(sizeof(*n));
     memset(n, 0, sizeof(*n));
     n->sources = sources;
-    for(int i = 0; sources[i]; i++)
-    {
-        char * p = realpath(sources[i]);
-        if (p) {
-            n->sources[i] = p;
-        } else {
-            if (ENOENT == errno) {
-                char * b = strrchr(sources[i], '/');
-                if (b)  {  
-                    int l = b - sources[i];
-                    if (l && (l < 1023)) {
-                        char dirname[1024];
-                        memcpy(dirname, sources[i], l);
-                        dirname[l] = 0;
-                        p = realpath(dirname);
-                        if (p) {
-                            sprintf(n->sources[i], "%s%s", dirname, b); 
-                        } 
-                    } 
-                } 
-            }
-        }
-    }
     printf("creating rule: %p target %p\n", n, targets);
     n->targets = targets;
-    for(int i = 0; targets[i]; i++)
-    {
-        char * p = realpath(targets[i]);
-        if (p) {
-            n->targets[i] = p;
-        }
-    }
     n->commands = commands;
     return n;    
 }
@@ -102,30 +72,43 @@ eval_deps(void) {
         int a = 0; 
         printf("eval %p\n", r); 
         struct rule ** adj = malloc(sizeof(struct rule *) * m);
-        for(int i = 0; r->sources && r->sources[i]; i++) {
-            struct rule * t = find_rule(r->sources[i]);
-            if (t) {
-                if (i >= m) {
-                    struct rule ** tmp = realloc(adj, (m + m) * sizeof(struct rule *));
-                    if (tmp) {
-                        adj = tmp;
-                        m += m; 
-                        adj[a] = 0;
-                    } else {
-                        free(adj);
-                        return -1;
-                    }               
-                }
-                int j; 
-                for(j = 0; (j < a) & (adj[j] != t); j++);
-                if (j == a) {
-                    printf("adj %p, %p %s \n-> %p %s\n", adj, r, r->commands, t, t->commands);
-                    t->incidence++;
-                    r->adjacency++; 
-                    adj[a++] = t;
+        if (r->sources) { 
+            for(int i = 0; r->sources && r->sources[i]; i++) {
+                struct rule * t = find_rule(r->sources[i]);
+                if (t) {
+                    if (i >= m) {
+                        struct rule ** tmp = realloc(adj, (m + m) * sizeof(struct rule *));
+                        if (tmp) {
+                            adj = tmp;
+                            m += m; 
+                            adj[a] = 0;
+                        } else {
+                            free(adj);
+                            return -1;
+                        }               
+                    }
+                    int j; 
+                    for(j = 0; (j < a) & (adj[j] != t); j++);
+                    if (j == a) {
+                        printf("adj %p, %p %s \n-> %p %s\n", adj, r, r->commands, t, t->commands);
+                        t->incidence++;
+                        r->adjacency++; 
+                        adj[a++] = t;
+                    }
+                }  
+                r->adj = adj;
+            }
+        }
+        for (int i = 0; r->targets[i]; i++) {
+            char * p = get_realpath(r->targets[i]);
+            if (p) {
+                if (find_sym(p)) {
+                    printf("ambiguous target: %s %s\n", r->targets[i], p);
+                    return -1;
+                } else {
+                    add_sym(p);
                 }
             }
-            r->adj = adj;
         }
         r = r->next;
         printf("next %p\n", r);
