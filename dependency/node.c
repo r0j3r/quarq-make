@@ -64,6 +64,26 @@ find_rule(char * n) {
     return r;
 }
 
+char *
+get_realpath(char * f)
+{
+    char * p = realpath(f, 0);
+
+    if (p) {
+        return p;
+    } else {
+        if (ENOENT == errno) {
+            char * l = strrchr(f, '/');
+            if (l) {
+                *l = 0;
+            } 
+        } else {
+            return 0;
+        }
+    }
+}
+
+
 int
 eval_deps(void) {
     struct rule * r = rules.next;
