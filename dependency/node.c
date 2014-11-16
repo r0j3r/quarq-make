@@ -64,25 +64,64 @@ find_rule(char * n) {
     return r;
 }
 
+void
+canondir(char * p) {
+    char * d = strdup(p);
+    char * c;
+    char n[1024];
+   
+    while(d) {
+        c = strsep(&d, '/');
+        if (c) {
+            sprintf(n + strlen(n),"/%s", c);
+            mkdir(n);
+        } 
+    }
+}
+
 char *
-get_realpath(char * f)
-{
+get_realpath(char * f) {
+
     char * p = realpath(f, 0);
 
     if (p) {
         return p;
     } else {
         if (ENOENT == errno) {
-            char * l = strrchr(f, '/');
+            char * b;
+            char * d = strdup(f);
+            char * l = strrchr(d, '/');
             if (l) {
                 *l = 0;
-            } 
+                b = l + 1;
+            } else {
+                b = f;
+            }
+            if (0 == strlen(d)) {
+                p = realpath(".", 0);
+            } else {
+                canondir(d);
+                p = realpath(d, 0);
+            }
+            free(d);
+            if (p) {
+                char * t = realloc(p, strlen(p) + strlen(b) + 1); 
+                if (t) {
+                    sprintf(t + strlen(t), "/%s", b); 
+                    free(p);
+                    return t;  
+                } else {
+                    free(p);
+                    return 0;
+                }  
+            } else {
+                return 0;
+            }
         } else {
             return 0;
         }
     }
 }
-
 
 int
 eval_deps(void) {
