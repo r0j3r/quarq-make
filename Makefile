@@ -1,7 +1,7 @@
 VPATH=../dependency
 
 CC=gcc
-CFLAGS=-Wall -MD -MP -g -O -flto -march=native
+CFLAGS=-std=gnu99 -Wall -MD -MP -g -O -flto -march=native
 LDFLAGS=-O -flto -fuse-linker-plugin -march=native
 
 dependency/command_queue.o : CFLAGS += -I../dependency -I../graph 
@@ -11,5 +11,5 @@ node.o : node.c
 spooky-c.c:
 spooky-c.h: 
 spooky-c.o: spooky-c.h spooky-c.c
-node: node.o spooky-c.o
+node: node.o spooky-c.o symbol.o
 -include *.d

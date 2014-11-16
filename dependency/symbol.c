@@ -1,3 +1,5 @@
+unsigned long get_index(char * name);
+
 struct sym {
     struct sym * n;
     char * name;
@@ -11,20 +13,20 @@ init_sym_tab(unsigned long sz) {
     struct sym * tab = malloc(sizeof(struct sym *) * sz);
     memset(tab, 0, sizeof(struct sym *) * sz);
     for(int i = 0; i < sz; i++) {
-        tab[i]->n = &tab[i];
+        tab[i].n = &tab[i];
     }
     return tab;
 }
 
 struct sym *
 find_name(struct sym * s, char * n) {
-    long i = get_hash(n);
-    struct sym * s = sym_tab[i]->n;
-    s->name = n;
-    while(strcmp(s->name, n)) {
+    long i = get_index(n);
+    struct sym * n_s = s[i].n;
+    n_s->name = n;
+    while(strcmp(n_s->name, n)) {
         s = s->n;
     }
-    if (s == sym_tab[i]) {
+    if (s == &s[i]) {
         return 0;
     } else {
         return s;
@@ -32,14 +34,19 @@ find_name(struct sym * s, char * n) {
 }
 
 void
-add_name(char * name, strutc rule * r)
+add_name(struct sym * s, char * name, struct rule * r)
 {
-    long i = get_hash(name);
+    long i = get_index(name);
     
-    struct sym * s = malloc(sizeof(*s));
-    s->name = name;
-    s->r = r;
+    struct sym * n_s = malloc(sizeof(*s));
+    n_s->name = name;
+    n_s->r = r;
 
-    s->n = sym_tab[i].n;
-    sym_tab[i].n = s;
+    n_s->n = s[i].n;
+    s[i].n = n_s;
+}
+
+unsigned long 
+get_index(char * name) {
+    return spooky_hash64(name, strlen(name), 0xdeadbeefdeadbeef) % (1 << 7); 
 }

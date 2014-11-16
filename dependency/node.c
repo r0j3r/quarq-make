@@ -9,6 +9,7 @@
 #include "node.h"
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 struct rule rules = {&rules, 0, 0, 0};
 struct rule * tail = &rules;
@@ -71,10 +72,10 @@ canondir(char * p) {
     char n[1024];
    
     while(d) {
-        c = strsep(&d, '/');
+        c = strsep(&d, "/");
         if (c) {
             sprintf(n + strlen(n),"/%s", c);
-            mkdir(n);
+            mkdir(n, 0755);
         } 
     }
 }
