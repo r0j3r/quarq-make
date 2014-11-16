@@ -161,11 +161,11 @@ eval_deps(void) {
         for (int i = 0; r->targets[i]; i++) {
             char * p = get_realpath(r->targets[i]);
             if (p) {
-                if (find_sym(p)) {
+                if (find_name(p)) {
                     printf("ambiguous target: %s %s\n", r->targets[i], p);
                     return -1;
                 } else {
-                    add_sym(p);
+                    add_name(p, r);
                 }
             }
         }
