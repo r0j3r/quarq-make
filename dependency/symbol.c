@@ -1,3 +1,7 @@
+#include <stdlib.h>
+#include <string.h>
+#include "spooky-c.h"
+
 unsigned long get_index(char * name);
 
 struct sym {

@@ -6,13 +6,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "node.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include "node.h"
+#include "symbol.h"
 
 struct rule rules = {&rules, 0, 0, 0};
 struct rule * tail = &rules;
+struct sym * symtab;
 
 struct rule *
 create_rule(char ** sources, char ** targets, char * commands) {
@@ -66,7 +68,7 @@ find_rule(char * n) {
 }
 
 void
-canondir(char * p) {
+make_dir(char * p) {
     char * d = strdup(p);
     char * c;
     char n[1024];
@@ -101,7 +103,7 @@ get_realpath(char * f) {
             if (0 == strlen(d)) {
                 p = realpath(".", 0);
             } else {
-                canondir(d);
+                make_dir(d);
                 p = realpath(d, 0);
             }
             free(d);
@@ -126,6 +128,7 @@ get_realpath(char * f) {
 
 int
 eval_deps(void) {
+    symtab = init_sym_tab(4096);
     struct rule * r = rules.next;
     while(r != &rules) {
         int m = 8; 
@@ -162,11 +165,11 @@ eval_deps(void) {
         for (int i = 0; r->targets[i]; i++) {
             char * p = get_realpath(r->targets[i]);
             if (p) {
-                if (find_name(p)) {
+                if (find_name(symtab, p)) {
                     printf("ambiguous target: %s %s\n", r->targets[i], p);
                     return -1;
                 } else {
-                    add_name(p, r);
+                    add_name(symtab, p, r);
                 }
             }
         }
@@ -264,15 +267,11 @@ rollback_queue(struct job * start) {
 
 void
 run_job_queue(void){
-    //start worker threads
-
     struct job * d = job_queue->next, * r;
     r = d->next;
     while(r != d) {
         r = r->next;
     }
-
-    //wait for threads to exit
 }
 
 struct file_state *
