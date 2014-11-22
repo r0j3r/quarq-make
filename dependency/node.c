@@ -32,7 +32,8 @@ struct rule * find_rule(char * n);
 void 
 add_rule(struct rule * n_r) {
     int i;
-    for(i = 0; 0 == find_rule(n_r->targets[i]); i++);
+    for(i = 0; n_r->targets && n_r->targets[i] 
+        && (0 == find_rule(n_r->targets[i])); i++);
     if (n_r->targets[i]) return;
     n_r->next = tail->next;
     tail->next = n_r;
@@ -254,13 +255,15 @@ enqueue_job(struct rule * r) {
 
 void 
 rollback_queue(struct job * start) {
-    struct job * j = start->next, * s;
+    struct job * j = start->next, * s = 0;
     start->next = job_queue->next;
     while(j != job_queue) {
         s = j; 
         j = j->next;
-        s->r->in_queue = 0;  
-        free(s);  
+        if (s->r) { 
+            s->r->in_queue = 0;  
+            free(s);
+        }  
     }
     job_queue = start;
 }
@@ -295,8 +298,9 @@ get_state(char * r) {
                 }
             }
             close(fd); 
-        } 
-    } else {
+        }
+    }
+    if (!ret) {
         ret = malloc(sizeof(*ret));
         memset(ret, 0, sizeof(*ret));
     }
