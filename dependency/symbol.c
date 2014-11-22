@@ -28,12 +28,12 @@ find_name(struct sym * s, char * n) {
     struct sym * n_s = s[i].n;
     n_s->name = n;
     while(strcmp(n_s->name, n)) {
-        s = s->n;
+        n_s = n_s->n;
     }
-    if (s == &s[i]) {
+    if (n_s == &s[i]) {
         return 0;
     } else {
-        return s;
+        return n_s;
     }
 }
 
