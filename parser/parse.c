@@ -226,6 +226,7 @@ parse_mkfile(int fd)
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
         }
+        create_rule();
         add_rule();
     }
 }
