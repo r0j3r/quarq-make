@@ -195,6 +195,11 @@ parse_hash_db(int fd, struct list ** db)
     return ret;
 }
 
+struct dyn_array {
+    int sz;
+    unsigned char d[];
+};
+
 int
 parse_mkfile(int fd)
 {
@@ -205,7 +210,12 @@ parse_mkfile(int fd)
     enum token tok; 
     char lex[1024];
     int l;
+    struct dyn_array *targets, *prereqs, *commands; 
+    char ** targets_vec, ** prereqs_vec, ** commands_vec;
 
+    init_dyn_array(&targets);
+    init_dyn_array(&prereqs);
+    init_dyn_array(&commands);
     while(1)
     {
         //get_targets
@@ -213,20 +223,29 @@ parse_mkfile(int fd)
         {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
+           if (string == tok) {
+               insert_vec(insert_string(lex, &targets), targets_vec);
+           }
         }
         //get sources
         while(tok != left_brace)
         {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
+           if (string == tok) {
+               insert_vec(insert_string(lex, &prereqs), prereqs_vec);
+           }
         }
         //get commands
         while(tok != right_brace)
         {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
+           if (string == tok) {
+               insert_vec(insert_string(lex, commands), commands_vec);
+           }
         }
-        create_rule();
-        add_rule();
+        r = create_rule(targets_vec, sources_vec, commands_vec);
+        add_rule(r);
     }
 }
