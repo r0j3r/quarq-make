@@ -197,8 +197,15 @@ parse_hash_db(int fd, struct list ** db)
 
 struct dyn_array {
     int sz;
-    unsigned char d[];
+    unsigned char * d[];
 };
+
+void
+init_dyn_array(struct dyn_array ** a)
+{
+    *a = malloc(sizeof(4 + 60));
+    *a->sz = 60;
+}
 
 int
 parse_mkfile(int fd)
