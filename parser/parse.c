@@ -9,75 +9,55 @@ int
 next_tok(enum tokenizer_state * state, char ** in, enum token * tok, 
          char * lex, int * l, int lim)
 {
-    while(in)
-    {
-        switch(*state)
-        {
+    while(in) {
+        switch(*state) {
         case start:
-            if (**in == ' ')
-            {
+            if (**in == ' ') {
+                (*in)++;
+                continue;
+            } else if (**in == '\t') {
                 (*in)++;
                 continue;
             }
-            else if (**in == '\t')
-            {
-                (*in)++;
-                continue;
-            }
-            else if (**in == '\n')
-            {
+            else if (**in == '\n') {
                 *tok = newline; 
                 (*in)++;
                 return 0;
-            }
-            else if (**in == ';')
-            {
+            } else if (**in == ';') {
                 *tok = semicolon; 
                 (*in)++;
                 return 0;
-            }
-            else if (**in == ':')
-            {
+            } else if (**in == ':') {
                 *tok = colon; 
                 (*in)++;
                 return 0;
-            }
-            else if (**in == '{')
-            {
+            } else if (**in == '{') {
                 *tok = left_brace; 
                 (*in)++;
                 return 0;
-            }
-            else if (**in == '}')
-            {
+            } else if (**in == '}') {
                 *tok = right_brace; 
                 (*in)++;
                 return 0;
-            }
-            else if (**in == 0)
-            {
+            } else if (**in == 0) {
                 return 1;
-            }
-            else
-            {
+            } else {
                 *state = alphanum;
                 continue;
             }
             break;
         case alphanum:
-            if (**in == 0)
-            {
+            if (**in == 0) {
                 lex[*l] = 0;
                 return -1;
-            }
-            else if ((**in == ' ') ||
+            } else if ((**in == ' ') ||
                      (**in == '\n') || 
                      (**in == ';') || 
                      (**in == '{') || 
                      (**in == '}') || 
                      (**in == ':') || 
                      (**in == '\t'))
-            {
+           {
                 lex[*l] = 0;
                 *state = start;
                 *tok = string;
@@ -95,24 +75,20 @@ next_tok(enum tokenizer_state * state, char ** in, enum token * tok,
 }
 
 void
-string_to_hex(unsigned char * s, unsigned int l, unsigned char * h)
-{
+string_to_hex(unsigned char * s, unsigned int l, unsigned char * h) {
     unsigned int i, j;
-    for(i = 0, j = 0; j < l; i++)
-    {
+    for(i = 0, j = 0; j < l; i++) {
         h[i] = string_to_hex_table[s[j++]] << 4;        
         h[i] |= string_to_hex_table[s[j++]];        
     }
 }
 
 void
-hex_to_string(unsigned char * h, unsigned int l, unsigned char * s)
-{
+hex_to_string(unsigned char * h, unsigned int l, unsigned char * s) {
     int j;
     int i;
 
-    for(j = 0, i = 0; i < l; i++)
-    {
+    for(j = 0, i = 0; i < l; i++) {
         s[j++] = hex_to_string_table[h[i] >> 4];
         s[j++] = hex_to_string_table[h[i] & 0xf];
     }
@@ -125,19 +101,18 @@ next_token_from_file(int fd, enum tokenizer_state * state, char ** in,
                      int * l, int lim)
 {
     int ret;
-    while(next_tok(state, in, tok, lex, l, lim) != 0)
-    {
+    while(next_tok(state, in, tok, lex, l, lim) != 0) {
         ret = read(fd, buff, buff_size);
-        if (ret < 0)
+        if (ret < 0) {
             return -1;
+        } 
         *in = buff;
     }
     return 0;
 }
 
 int
-parse_hash_db(int fd, struct list ** db)
-{
+parse_hash_db(int fd, struct list ** db) {
     int ret;
     enum tokenizer_state state;
     char buff[4096];
@@ -148,45 +123,37 @@ parse_hash_db(int fd, struct list ** db)
     char * f_n;
     unsigned char * h_s;
 
-    while(1)
-    {
+    while(1) {
         ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff), &tok, 
                                    lex, &l, sizeof(lex));
-        while((ret == 0) && (tok != string))
-        {
+        while((ret == 0) && (tok != string)) {
             ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff), 
                                       &tok, lex, &l, sizeof(lex));
         }
-        while(1)
-        {
-            if (tok == string)
-            {
+        while(1) {
+            if (tok == string) {
                 f_n = strdup(lex);
-            }
-            else
+            } else {
                 break;
+            }
             ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff), 
                                        &tok, lex, &l, sizeof(lex));
-            if (tok == colon)
-            {
+            if (tok == colon) {
                 continue;
-            }
-            else
+            } else {
                 break;
+            }
             ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff), 
                                        &tok, lex, &l, sizeof(lex));
-            if (tok == string)
-            {
+            if (tok == string) {
                 h_s = malloc(l/2);
                 string_to_hex(lex, l, h_s);
-            }
-            else
+            } else {
                 break;
-
+            } 
             create_hash(db, f_n, h_s);
         
-            while((ret == 0) && (tok != string))
-            {
+            while((ret == 0) && (tok != string)) {
                 ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                            &tok, lex, &l, sizeof(lex));
             }
@@ -201,15 +168,13 @@ struct dyn_array {
 };
 
 void
-init_dyn_array(struct dyn_array ** a)
-{
+init_dyn_array(struct dyn_array ** a) {
     *a = malloc(sizeof(4 + 60));
     *a->sz = 60;
 }
 
 int
-parse_mkfile(int fd)
-{
+parse_mkfile(int fd) {
     int ret;
     enum tokenizer_state state;
     char buff[4096];
@@ -223,11 +188,9 @@ parse_mkfile(int fd)
     init_dyn_array(&targets);
     init_dyn_array(&prereqs);
     init_dyn_array(&commands);
-    while(1)
-    {
+    while(1) {
         //get_targets
-        while(tok != colon)
-        {
+        while(tok != colon) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
@@ -235,8 +198,7 @@ parse_mkfile(int fd)
            }
         }
         //get sources
-        while(tok != left_brace)
-        {
+        while(tok != left_brace) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
@@ -244,8 +206,7 @@ parse_mkfile(int fd)
            }
         }
         //get commands
-        while(tok != right_brace)
-        {
+        while(tok != right_brace) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
