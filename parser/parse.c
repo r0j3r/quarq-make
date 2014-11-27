@@ -164,6 +164,7 @@ parse_hash_db(int fd, struct list ** db) {
 
 struct dyn_array {
     int sz;
+    int n;
     unsigned char * d[];
 };
 
@@ -171,6 +172,20 @@ void
 init_dyn_array(struct dyn_array ** a) {
     *a = malloc(sizeof(4 + 60));
     *a->sz = 60;
+    *a->n = 0;
+}
+
+int
+insert_vec(char * s, struct dyn_array ** a)
+{
+    *a->d[*a->n++] = s;
+    if (*a->sz <= (*a->n + 1) * sizeof(char *)) {
+        struct dyn_array * t = realloc(*a, *a->sz + *a->sz);
+        if (t) {
+            *a = t;
+            *a->sz += *a->sz;
+        }
+    }
 }
 
 int
