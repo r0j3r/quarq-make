@@ -171,19 +171,19 @@ struct dyn_array {
 void
 init_dyn_array(struct dyn_array ** a) {
     *a = malloc(sizeof(4 + 60));
-    *a->sz = 60;
-    *a->n = 0;
+    (*a)->sz = 60;
+    (*a)->n = 0;
 }
 
 int
 insert_vec(char * s, struct dyn_array ** a)
 {
-    *a->d[*a->n++] = s;
-    if (*a->sz <= (*a->n + 1) * sizeof(char *)) {
-        struct dyn_array * t = realloc(*a, *a->sz + *a->sz);
+    (*a)->d[(*a)->n++] = s;
+    if ((*a)->sz <= ((*a)->n + 1) * sizeof(char *)) {
+        struct dyn_array * t = realloc(*a, (*a)->sz + (*a)->sz);
         if (t) {
             *a = t;
-            *a->sz += *a->sz;
+            (*a)->sz += (*a)->sz;
         }
     }
 }
@@ -198,7 +198,7 @@ parse_mkfile(int fd) {
     char lex[1024];
     int l;
     struct dyn_array *targets, *prereqs, *commands; 
-    char ** targets_vec, ** prereqs_vec, ** commands_vec;
+    char * targets_vec, * prereqs_vec, * commands_vec;
 
     init_dyn_array(&targets);
     init_dyn_array(&prereqs);
@@ -209,7 +209,7 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, &targets), targets_vec);
+               insert_vec(insert_string(lex, &targets), &targets_vec);
            }
         }
         //get sources
@@ -217,7 +217,7 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, &prereqs), prereqs_vec);
+               insert_vec(insert_string(lex, &prereqs), &prereqs_vec);
            }
         }
         //get commands
@@ -225,10 +225,10 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, commands), commands_vec);
+               insert_vec(insert_string(lex, commands), &commands_vec);
            }
         }
-        r = create_rule(targets_vec, sources_vec, commands_vec);
+        struct rule * r = create_rule(targets_vec, prereqs_vec, commands_vec);
         add_rule(r);
     }
 }
