@@ -165,6 +165,12 @@ parse_hash_db(int fd, struct list ** db) {
 struct dyn_array {
     int sz;
     int n;
+    unsigned char d[];
+};
+
+struct command_vec {
+    int sz;
+    int n;
     unsigned char * d[];
 };
 
@@ -175,15 +181,36 @@ init_dyn_array(struct dyn_array ** a) {
     (*a)->n = 0;
 }
 
-int
-insert_vec(char * s, struct dyn_array ** a)
-{
+void
+init_command_vec(struct command_vec ** v) {
+    *v = malloc(sizeof(4 + 60));
+    (*v)->sz = 60;
+    (*v)->n = 0;
+}
+
+char *
+insert_string(char * s, int l, struct dyn_array ** a) {
     (*a)->d[(*a)->n++] = s;
-    if ((*a)->sz <= ((*a)->n + 1) * sizeof(char *)) {
-        struct dyn_array * t = realloc(*a, (*a)->sz + (*a)->sz);
+    if ((*a)->sz <= ((*a)->n + 1) * sizeof(char)) {
+        int sz = (*a)->sz;
+        struct dyn_array * t = realloc(*a, sz + sz);
         if (t) {
             *a = t;
-            (*a)->sz += (*a)->sz;
+            (*a)->sz += sz;
+        }
+    }
+}
+
+int
+insert_vec(char * s, struct command_vec ** v)
+{
+    (*v)->d[(*v)->n++] = s;
+    if ((*v)->sz <= ((*v)->n + 1) * sizeof(char *)) {
+        int sz = (*v)->sz;
+        struct dyn_array * t = realloc(*v, sz + sz);
+        if (t) {
+            *v = t;
+            (*v)->sz += sz;
         }
     }
 }
@@ -198,11 +225,14 @@ parse_mkfile(int fd) {
     char lex[1024];
     int l;
     struct dyn_array *targets, *prereqs, *commands; 
-    char * targets_vec, * prereqs_vec, * commands_vec;
+    struct command_vec * targets_vec, * prereqs_vec, * commands_vec;
 
     init_dyn_array(&targets);
     init_dyn_array(&prereqs);
     init_dyn_array(&commands);
+    init_command_vec(&targets_vec);
+    init_command_vec(&prereqs_vec);
+    init_command_vec(&commands_vec);
     while(1) {
         //get_targets
         while(tok != colon) {
@@ -225,7 +255,7 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, commands), &commands_vec);
+               insert_vec(insert_string(lex, &commands), &commands_vec);
            }
         }
         struct rule * r = create_rule(targets_vec, prereqs_vec, commands_vec);
