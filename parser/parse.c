@@ -1,9 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "list.h"
+#include "file.h"
 #include "parse.h"
 #include "string_to_hex_table.h"
 #include "hex_to_string_table.h"
+#include <rule.h>
 
 int
 next_tok(enum tokenizer_state * state, char ** in, enum token * tok, 
@@ -190,8 +193,7 @@ init_command_vec(struct command_vec ** v) {
 
 char *
 insert_string(char * s, int l, struct dyn_array ** a) {
-    (*a)->d[(*a)->n++] = s;
-    if ((*a)->sz <= ((*a)->n + 1) * sizeof(char)) {
+    while (((*a)->n + l + 1) > (*a)->sz) {
         int sz = (*a)->sz;
         struct dyn_array * t = realloc(*a, sz + sz);
         if (t) {
@@ -199,6 +201,11 @@ insert_string(char * s, int l, struct dyn_array ** a) {
             (*a)->sz += sz;
         }
     }
+    char * ret = &((*a)->d[((*a)->n)]);
+    memcpy(ret, s, l);
+    (*a)->n += l;
+    (*a)->d[(*a)->n++] = 0;
+    return ret;
 }
 
 int
@@ -207,17 +214,18 @@ insert_vec(char * s, struct command_vec ** v)
     (*v)->d[(*v)->n++] = s;
     if ((*v)->sz <= ((*v)->n + 1) * sizeof(char *)) {
         int sz = (*v)->sz;
-        struct dyn_array * t = realloc(*v, sz + sz);
+        struct command_vec * t = realloc(*v, sz + sz);
         if (t) {
             *v = t;
             (*v)->sz += sz;
         }
     }
+    return (*v)->n;
 }
 
 int
 parse_mkfile(int fd) {
-    int ret;
+    int ret = 0;
     enum tokenizer_state state;
     char buff[4096];
     char * in;
@@ -225,21 +233,21 @@ parse_mkfile(int fd) {
     char lex[1024];
     int l;
     struct dyn_array *targets, *prereqs, *commands; 
-    struct command_vec * targets_vec, * prereqs_vec, * commands_vec;
+    struct command_vec *targets_vec, *prereqs_vec, *commands_vec;
 
     init_dyn_array(&targets);
     init_dyn_array(&prereqs);
     init_dyn_array(&commands);
     init_command_vec(&targets_vec);
     init_command_vec(&prereqs_vec);
-    init_command_vec(&commands_vec);
+
     while(1) {
         //get_targets
         while(tok != colon) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, &targets), &targets_vec);
+               insert_vec(insert_string(lex, l, &targets), &targets_vec);
            }
         }
         //get sources
@@ -247,7 +255,7 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, &prereqs), &prereqs_vec);
+               insert_vec(insert_string(lex, l, &prereqs), &prereqs_vec);
            }
         }
         //get commands
@@ -255,10 +263,12 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_vec(insert_string(lex, &commands), &commands_vec);
+               insert_string(lex, l, &commands);
            }
         }
-        struct rule * r = create_rule(targets_vec, prereqs_vec, commands_vec);
+        struct rule * r = create_rule(targets_vec->d, prereqs_vec->d, 
+            commands->d);
         add_rule(r);
     }
+    return ret;
 }
