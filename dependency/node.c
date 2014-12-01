@@ -17,7 +17,8 @@ struct rule * tail = &rules;
 struct sym * symtab;
 
 struct rule *
-create_rule(char ** sources, char ** targets, char * commands) {
+create_rule(unsigned char ** sources, unsigned char ** targets, 
+    unsigned char ** commands) {
     struct rule *n = malloc(sizeof(*n));
     memset(n, 0, sizeof(*n));
     n->sources = sources;
@@ -27,7 +28,7 @@ create_rule(char ** sources, char ** targets, char * commands) {
     return n;    
 }
 
-struct rule * find_rule(char * n);
+struct rule * find_rule(unsigned char * n);
 
 void 
 add_rule(struct rule * n_r) {
@@ -41,10 +42,10 @@ add_rule(struct rule * n_r) {
 }
 
 struct rule *
-find_rule(char * n) {
+find_rule(unsigned char * n) {
     struct rule *r = rules.next;
     int m = 1;
-    char * s[2];
+    unsigned char * s[2];
     s[0] = n;
     s[1] = 0;
     rules.targets = s;
@@ -69,10 +70,10 @@ find_rule(char * n) {
 }
 
 void
-make_dir(char * p) {
-    char * d = strdup(p);
-    char * c;
-    char n[1024];
+make_dir(unsigned char * p) {
+    unsigned char * d = strdup(p);
+    unsigned char * c;
+    unsigned char n[1024];
    
     while(d) {
         c = strsep(&d, "/");
@@ -83,18 +84,18 @@ make_dir(char * p) {
     }
 }
 
-char *
-get_realpath(char * f) {
+unsigned char *
+get_realpath(unsigned char * f) {
 
-    char * p = realpath(f, 0);
+    unsigned char * p = realpath(f, 0);
 
     if (p) {
         return p;
     } else {
         if (ENOENT == errno) {
-            char * b;
-            char * d = strdup(f);
-            char * l = strrchr(d, '/');
+            unsigned char * b;
+            unsigned char * d = strdup(f);
+            unsigned char * l = strrchr(d, '/');
             if (l) {
                 *l = 0;
                 b = l + 1;
@@ -109,7 +110,7 @@ get_realpath(char * f) {
             }
             free(d);
             if (p) {
-                char * t = realloc(p, strlen(p) + strlen(b) + 1); 
+                unsigned char * t = realloc(p, strlen(p) + strlen(b) + 1); 
                 if (t) {
                     sprintf(t + strlen(t), "/%s", b); 
                     free(p);
@@ -154,7 +155,8 @@ eval_deps(void) {
                     int j; 
                     for(j = 0; (j < a) & (adj[j] != t); j++);
                     if (j == a) {
-                        printf("adj %p, %p %s \n-> %p %s\n", adj, r, r->commands, t, t->commands);
+                        printf("adj %p, %p %s \n-> %p %s\n", adj, r, 
+                            r->commands, t, t->commands);
                         t->incidence++;
                         r->adjacency++; 
                         adj[a++] = t;
@@ -164,7 +166,7 @@ eval_deps(void) {
             }
         }
         for (int i = 0; r->targets[i]; i++) {
-            char * p = get_realpath(r->targets[i]);
+            unsigned char * p = get_realpath(r->targets[i]);
             if (p) {
                 if (find_name(symtab, p)) {
                     printf("ambiguous target: %s %s\n", r->targets[i], p);
@@ -225,7 +227,7 @@ struct file_state {
     struct timeval event;
     struct timespec current;
     int command_len;
-    char * commands[];
+    unsigned char ** commands[];
 };
 
 struct job {
@@ -278,11 +280,11 @@ run_job_queue(void){
 }
 
 struct file_state *
-get_state(char * r) {
+get_state(unsigned char * r) {
     struct file_state * ret = 0;
-    char * p = realpath(r, 0);
+    unsigned char * p = realpath(r, 0);
     if (p) {
-        char * state_file_path  = malloc(strlen(p) + 7);
+        unsigned char * state_file_path  = malloc(strlen(p) + 7);
         sprintf(state_file_path, "%s%s", "r", ".state");
         int fd = open(state_file_path, O_RDONLY);
         if (fd != -1) {
@@ -308,8 +310,8 @@ get_state(char * r) {
 }
 
 int
-file_out_of_date(struct file_state * st, char * r) {
-    char * p = realpath(r, 0);
+file_out_of_date(struct file_state * st, unsigned char * r) {
+    unsigned char * p = realpath(r, 0);
     if (p) {
         struct stat64 st_buff; 
         stat64(p, &st_buff);
@@ -401,15 +403,15 @@ update_deps(void) {
 
 void
 test(void) {
-    char * node_h_target[] = {"node.h", 0};
-    char * node_c_target[] = {"node.c", 0};
-    char * node_source[] = {"node.c", "node.h", 0};
-    char * node_target[] = {"node.o", 0};
-    char * node_commands = {"gcc -Wall -c -g -O2 -flto -march=native node.c -o node.o"};
-    char * node_exec_source[] = {"node.o", 0};
-    char * node_exec_target[] = {"node", 0}; 
-    char * node_exec_commands = {"gcc -g -O2 -flto -fuse-linker-plugin -march=native node.o \
--o node"};
+    unsigned char * node_h_target[] = {(unsigned char *)"node.h", 0};
+    unsigned char * node_c_target[] = {(unsigned char *)"node.c", 0};
+    unsigned char * node_source[] = {"node.c", "node.h", 0};
+    unsigned char * node_target[] = {"node.o", 0};
+    unsigned char * node_commands[] = {"gcc -Wall -c -g -O2 -flto -march=native node.c -o node.o", 0};
+    unsigned char * node_exec_source[] = {"node.o", 0};
+    unsigned char * node_exec_target[] = {"node", 0}; 
+    unsigned char * node_exec_commands[] = {"gcc -g -O2 -flto -fuse-linker-plugin -march=native node.o \
+-o node", 0};
 
     struct rule * new_rule = create_rule(node_source, node_target, node_commands);
     add_rule(new_rule);

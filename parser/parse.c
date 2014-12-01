@@ -263,11 +263,11 @@ parse_mkfile(int fd) {
            ret = next_token_from_file(fd, &state, &in, buff, sizeof(buff),
                                    &tok, lex, &l, sizeof(lex));
            if (string == tok) {
-               insert_string(lex, l, &commands);
+               insert_vec(insert_string(lex, l, &prereqs), &commands_vec);
            }
         }
         struct rule * r = create_rule(targets_vec->d, prereqs_vec->d, 
-            commands->d);
+            commands_vec->d);
         add_rule(r);
     }
     return ret;
