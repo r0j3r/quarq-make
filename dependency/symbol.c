@@ -1,14 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
+#include "symbol.h"
 #include "spooky-c.h"
 
-unsigned long get_index(char * name);
-
-struct sym {
-    struct sym * n;
-    char * name;
-    struct rule * r;
-};
+unsigned long get_index(unsigned char * name);
 
 struct sym * sym_tab;
 
@@ -23,7 +18,7 @@ init_sym_tab(unsigned long sz) {
 }
 
 struct sym *
-find_name(struct sym * s, char * n) {
+find_name(struct sym * s, unsigned char * n) {
     long i = get_index(n);
     struct sym * n_s = s[i].n;
     n_s->name = n;
@@ -38,7 +33,7 @@ find_name(struct sym * s, char * n) {
 }
 
 void
-add_name(struct sym * s, char * name, struct rule * r)
+add_name(struct sym * s, unsigned char * name, struct rule * r)
 {
     long i = get_index(name);
     
@@ -51,6 +46,6 @@ add_name(struct sym * s, char * name, struct rule * r)
 }
 
 unsigned long 
-get_index(char * name) {
+get_index(unsigned char * name) {
     return spooky_hash64(name, strlen(name), 0xdeadbeefdeadbeef) % (1 << 7); 
 }

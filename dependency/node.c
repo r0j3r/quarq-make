@@ -282,9 +282,9 @@ run_job_queue(void){
 struct file_state *
 get_state(unsigned char * r) {
     struct file_state * ret = 0;
-    unsigned char * p = realpath(r, 0);
+    char * p = realpath(r, 0);
     if (p) {
-        unsigned char * state_file_path  = malloc(strlen(p) + 7);
+        char * state_file_path  = malloc(strlen(p) + 7);
         sprintf(state_file_path, "%s%s", "r", ".state");
         int fd = open(state_file_path, O_RDONLY);
         if (fd != -1) {
@@ -311,7 +311,7 @@ get_state(unsigned char * r) {
 
 int
 file_out_of_date(struct file_state * st, unsigned char * r) {
-    unsigned char * p = realpath(r, 0);
+    char * p = realpath((char *)r, 0);
     if (p) {
         struct stat64 st_buff; 
         stat64(p, &st_buff);
@@ -369,7 +369,7 @@ update(struct rule * r) {
 
     if (targets_need_update) {
         if (r->commands) {
-            printf("command %s\n", r->commands);
+            printf("command %s\n", r->commands[0]);
             enqueue_job(r);
         }
         return 1;
@@ -405,12 +405,12 @@ void
 test(void) {
     unsigned char * node_h_target[] = {(unsigned char *)"node.h", 0};
     unsigned char * node_c_target[] = {(unsigned char *)"node.c", 0};
-    unsigned char * node_source[] = {"node.c", "node.h", 0};
-    unsigned char * node_target[] = {"node.o", 0};
-    unsigned char * node_commands[] = {"gcc -Wall -c -g -O2 -flto -march=native node.c -o node.o", 0};
-    unsigned char * node_exec_source[] = {"node.o", 0};
-    unsigned char * node_exec_target[] = {"node", 0}; 
-    unsigned char * node_exec_commands[] = {"gcc -g -O2 -flto -fuse-linker-plugin -march=native node.o \
+    unsigned char * node_source[] = {(unsigned char *)"node.c", (unsigned char *)"node.h", 0};
+    unsigned char * node_target[] = {(unsigned char *)"node.o", 0};
+    unsigned char * node_commands[] = {(unsigned char *)"gcc -Wall -c -g -O2 -flto -march=native node.c -o node.o", 0};
+    unsigned char * node_exec_source[] = {(unsigned char *)"node.o", 0};
+    unsigned char * node_exec_target[] = {(unsigned char *)"node", 0}; 
+    unsigned char * node_exec_commands[] = {(unsigned char *)"gcc -g -O2 -flto -fuse-linker-plugin -march=native node.o \
 -o node", 0};
 
     struct rule * new_rule = create_rule(node_source, node_target, node_commands);

@@ -8,13 +8,13 @@ struct list
 struct rule 
 {
     struct rule * next;
-    char ** sources;
+    unsigned char ** sources;
     struct rule ** adj;
-    char ** targets;
+    unsigned char ** targets;
     int incidence;
     int adjacency;
     int command_len; 
-    char ** commands;
+    unsigned char ** commands;
     unsigned char visited;
     unsigned char marked; 
     unsigned char in_queue;
