@@ -54,7 +54,7 @@ find_rule(unsigned char * n) {
         printf("checking %p targets %p\n", r, r->targets);
         for(int i = 0; r->targets && r->targets[i] && m; i++) {
             printf("possible target %d %s\n", i, r->targets[i]);
-            if (r->targets[i] && !strcmp(r->targets[i], n)) {
+            if (r->targets[i] && !strcmp((char *)r->targets[i], (char *)n)) {
                     printf("found rule: %p target %s\n", r, r->targets[i]); 
                     m = 0;
             }
@@ -65,21 +65,22 @@ find_rule(unsigned char * n) {
     if (r == &rules) {
         return 0;
     }
-    printf("found rule %p, name %s command %s\n", r, n, r->commands);
+    printf("found rule %p, name %s command %s\n", r, n, 
+        (char *)(r->commands[0]));
     return r;
 }
 
 void
 make_dir(unsigned char * p) {
-    unsigned char * d = strdup(p);
+    unsigned char * d = (unsigned char *)strdup((char *)p);
     unsigned char * c;
     unsigned char n[1024];
    
     while(d) {
-        c = strsep(&d, "/");
+        c = (unsigned char *)strsep((char **)&d, "/");
         if (c) {
-            sprintf(n + strlen(n),"/%s", c);
-            mkdir(n, 0755);
+            sprintf((char *)(n + strlen((char *)n)),"/%s", (char *)c);
+            mkdir((char *)n, 0755);
         } 
     }
 }
@@ -87,32 +88,33 @@ make_dir(unsigned char * p) {
 unsigned char *
 get_realpath(unsigned char * f) {
 
-    unsigned char * p = realpath(f, 0);
+    unsigned char * p = (unsigned char *)realpath((char *)f, 0);
 
     if (p) {
         return p;
     } else {
         if (ENOENT == errno) {
             unsigned char * b;
-            unsigned char * d = strdup(f);
-            unsigned char * l = strrchr(d, '/');
+            unsigned char * d = (unsigned char *)strdup((char *)f);
+            unsigned char * l = (unsigned char *)strrchr((char *)d, '/');
             if (l) {
                 *l = 0;
                 b = l + 1;
             } else {
                 b = f;
             }
-            if (0 == strlen(d)) {
-                p = realpath(".", 0);
+            if (0 == strlen((char *)d)) {
+                p = (unsigned char *)realpath(".", 0);
             } else {
                 make_dir(d);
-                p = realpath(d, 0);
+                p = (unsigned char *)realpath((char *)d, 0);
             }
             free(d);
             if (p) {
-                unsigned char * t = realloc(p, strlen(p) + strlen(b) + 1); 
+                unsigned char * t = realloc(p, strlen((char *)p) 
+                    + strlen((char *)b) + 1); 
                 if (t) {
-                    sprintf(t + strlen(t), "/%s", b); 
+                    sprintf((char * restrict)(t + strlen((char *)t)), "/%s", b); 
                     free(p);
                     return t;  
                 } else {
@@ -156,7 +158,7 @@ eval_deps(void) {
                     for(j = 0; (j < a) & (adj[j] != t); j++);
                     if (j == a) {
                         printf("adj %p, %p %s \n-> %p %s\n", adj, r, 
-                            r->commands, t, t->commands);
+                            r->commands[0], t, t->commands[0]);
                         t->incidence++;
                         r->adjacency++; 
                         adj[a++] = t;
@@ -282,9 +284,9 @@ run_job_queue(void){
 struct file_state *
 get_state(unsigned char * r) {
     struct file_state * ret = 0;
-    char * p = realpath(r, 0);
+    char * p = realpath((const char * restrict)r, 0);
     if (p) {
-        char * state_file_path  = malloc(strlen(p) + 7);
+        char * state_file_path  = malloc(strlen((char *)p) + 7);
         sprintf(state_file_path, "%s%s", "r", ".state");
         int fd = open(state_file_path, O_RDONLY);
         if (fd != -1) {

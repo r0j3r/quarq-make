@@ -9,8 +9,8 @@
 #include <rule.h>
 
 int
-next_tok(enum tokenizer_state * state, char ** in, enum token * tok, 
-         char * lex, int * l, int lim)
+next_tok(enum tokenizer_state * state, unsigned char ** in, enum token * tok, 
+         unsigned char * lex, int * l, int lim)
 {
     while(in) {
         switch(*state) {
@@ -99,9 +99,9 @@ hex_to_string(unsigned char * h, unsigned int l, unsigned char * s) {
 }
 
 int
-next_token_from_file(int fd, enum tokenizer_state * state, char ** in, 
-                     char * buff, int buff_size, enum token * tok, char * lex, 
-                     int * l, int lim)
+next_token_from_file(int fd, enum tokenizer_state * state, unsigned char ** in,
+                     unsigned char * buff, int buff_size, enum token * tok, 
+                     unsigned char * lex, int * l, int lim)
 {
     int ret;
     while(next_tok(state, in, tok, lex, l, lim) != 0) {
@@ -118,12 +118,12 @@ int
 parse_hash_db(int fd, struct list ** db) {
     int ret;
     enum tokenizer_state state;
-    char buff[4096];
-    char * in;
+    unsigned char buff[4096];
+    unsigned char * in;
     enum token tok; 
-    char lex[1024];
+    unsigned char lex[1024];
     int l;
-    char * f_n;
+    unsigned char * f_n;
     unsigned char * h_s;
 
     while(1) {
@@ -191,8 +191,8 @@ init_command_vec(struct command_vec ** v) {
     (*v)->n = 0;
 }
 
-char *
-insert_string(char * s, int l, struct dyn_array ** a) {
+unsigned char *
+insert_string(unsigned char * s, int l, struct dyn_array ** a) {
     while (((*a)->n + l + 1) > (*a)->sz) {
         int sz = (*a)->sz;
         struct dyn_array * t = realloc(*a, sz + sz);
@@ -201,7 +201,7 @@ insert_string(char * s, int l, struct dyn_array ** a) {
             (*a)->sz += sz;
         }
     }
-    char * ret = &((*a)->d[((*a)->n)]);
+    unsigned char * ret = &((*a)->d[((*a)->n)]);
     memcpy(ret, s, l);
     (*a)->n += l;
     (*a)->d[(*a)->n++] = 0;
@@ -209,7 +209,7 @@ insert_string(char * s, int l, struct dyn_array ** a) {
 }
 
 int
-insert_vec(char * s, struct command_vec ** v)
+insert_vec(unsigned char * s, struct command_vec ** v)
 {
     (*v)->d[(*v)->n++] = s;
     if ((*v)->sz <= ((*v)->n + 1) * sizeof(char *)) {
@@ -227,10 +227,10 @@ int
 parse_mkfile(int fd) {
     int ret = 0;
     enum tokenizer_state state;
-    char buff[4096];
-    char * in;
+    unsigned char buff[4096];
+    unsigned char * in;
     enum token tok; 
-    char lex[1024];
+    unsigned char lex[1024];
     int l;
     struct dyn_array *targets, *prereqs, *commands; 
     struct command_vec *targets_vec, *prereqs_vec, *commands_vec;
