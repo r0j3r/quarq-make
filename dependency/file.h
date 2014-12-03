@@ -25,7 +25,7 @@ int
 update_hash(struct list * db, char *f, unsigned char * h, unsigned char ** old_hash);
 
 int
-create_hash(struct list ** db, char *f, unsigned char * h);
+create_hash(struct list ** db, unsigned char *f, unsigned char * h);
 
 unsigned char *
 compute_file_hash(char *);

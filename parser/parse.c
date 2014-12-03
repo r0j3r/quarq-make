@@ -135,7 +135,7 @@ parse_hash_db(int fd, struct list ** db) {
         }
         while(1) {
             if (tok == string) {
-                f_n = strdup(lex);
+                f_n = (unsigned char *)strdup((char *)lex);
             } else {
                 break;
             }

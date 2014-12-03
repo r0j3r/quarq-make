@@ -22,7 +22,7 @@ find_name(struct sym * s, unsigned char * n) {
     long i = get_index(n);
     struct sym * n_s = s[i].n;
     n_s->name = n;
-    while(strcmp(n_s->name, n)) {
+    while(strcmp((char *)n_s->name, (char *)n)) {
         n_s = n_s->n;
     }
     if (n_s == &s[i]) {
@@ -47,5 +47,5 @@ add_name(struct sym * s, unsigned char * name, struct rule * r)
 
 unsigned long 
 get_index(unsigned char * name) {
-    return spooky_hash64(name, strlen(name), 0xdeadbeefdeadbeef) % (1 << 7); 
+    return spooky_hash64(name, strlen((char *)name), 0xdeadbeefdeadbeef) % (1 << 7); 
 }
